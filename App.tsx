@@ -1,42 +1,62 @@
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Button, StyleSheet, Text, View } from "react-native";
 import * as ExpoNotifications from "expo-notifications";
 import appConfig from "./app.json";
 
-export default function App() {
-  const [expoPushToken, setExpoPushToken] = React.useState("");
-  const [errorMessage, setErrorMessage] = React.useState("");
-
-  React.useEffect(() => {
-    ExpoNotifications.getExpoPushTokenAsync({
+async function getExpoPushToken(
+  setErrorMessage: React.Dispatch<React.SetStateAction<string>>,
+  setExpoPushToken: React.Dispatch<React.SetStateAction<string>>,
+  setIsLoading: React.Dispatch<React.SetStateAction<boolean>>
+) {
+  setIsLoading(true);
+  setErrorMessage("");
+  try {
+    const response = await ExpoNotifications.getExpoPushTokenAsync({
       projectId: appConfig.expo.extra.eas.projectId,
-    })
-      .then((response) => setExpoPushToken(response.data))
-      .catch((error) => setErrorMessage(String(error)));
+    });
+    setExpoPushToken(response.data);
+  } catch (error) {
+    setErrorMessage(String(error));
+  }
+  setIsLoading(false);
+}
+
+export default function App() {
+  const [errorMessage, setErrorMessage] = React.useState("");
+  const [expoPushToken, setExpoPushToken] = React.useState("");
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  const onPressReload = React.useCallback(() => {
+    setExpoPushToken("");
+    getExpoPushToken(setErrorMessage, setExpoPushToken, setIsLoading);
   }, []);
 
-  if (errorMessage) {
-    return <Text style={styles.errorText}>{errorMessage}</Text>;
-  }
-
-  const text = expoPushToken || "Loading ...";
+  React.useEffect(() => {
+    getExpoPushToken(setErrorMessage, setExpoPushToken, setIsLoading);
+  }, []);
 
   return (
     <View style={styles.container}>
-      <Text>{text}</Text>
+      {errorMessage ? (
+        <Text style={styles.errorText}>{errorMessage}</Text>
+      ) : isLoading ? (
+        <Text>loading...</Text>
+      ) : (
+        <Text>{expoPushToken || "empty..."}</Text>
+      )}
+      <Button disabled={isLoading} onPress={onPressReload} title="reload" />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: "#fff",
     alignItems: "center",
+    backgroundColor: "#fff",
+    flex: 1,
     justifyContent: "center",
   },
   errorText: {
     color: "red",
-    margin: "auto",
   },
 });
